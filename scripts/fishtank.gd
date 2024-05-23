@@ -1,8 +1,11 @@
 extends MeshInstance3D
 
-@export var fps: int = 30
+#TODO: fix fish velocity parsing errors
+
+@export var fps: int = 60
 @export var fish: PackedScene
 @export var food: PackedScene
+@export var oob_color: Color
 
 # Node references
 var _file_dialog
@@ -28,6 +31,8 @@ var _total_time: float = 0.0
 var _total_frames: int = 0
 var _load_mutex = Mutex.new()
 var _thread = Thread.new()
+var _tank_bounds = Vector3(0.5, 0.25, 0.125)
+var _color_oob_fish = false
 
 
 # Called when the node enters the scene tree for the first time.
@@ -103,6 +108,7 @@ func _setup_timeline():
 	var time = float(_total_frames) / fps
 	var total_string = "%.1f Sec\n%3d Frames" % [time, _total_frames]
 	_total_time_label.set_text(total_string)
+	_current_time = float(_current_frame) / fps
 
 
 func _update_timeline(frame):
@@ -136,6 +142,16 @@ func _show_fish(frame):
 			dir = f.position - axis
 		# Move to position
 		fish_inst.look_at_from_position(f.position, dir)
+		# If OOB coloring is on, check if out of bounds
+		if _color_oob_fish:
+			var pos_diff = f.position.abs() - _tank_bounds
+			var inbounds = true
+			for i in range(3):
+				if pos_diff[i] > 0:
+					inbounds = false
+					break
+			if not inbounds:
+				fish_inst.color = oob_color
 		add_child(fish_inst)
 
 
@@ -161,6 +177,12 @@ func _reset_tank():
 	_tank_paused = true
 	_setup_timeline()
 	_update_timeline(_current_frame)
+
+
+func toggle_oob_coloring():
+	_color_oob_fish = not _color_oob_fish
+	print("Fish Color: ", str(_color_oob_fish))
+	return _color_oob_fish
 
 
 func _load_file(file):
@@ -189,74 +211,97 @@ func _load_file_threadwork(file) -> Array:
 	var line = f.get_line().strip_edges()
 	while line.length() == 0 or line[0] == '#':
 		line = f.get_line().strip_edges()
+		if f.eof_reached():
+			var err_str = "No input for number of frames. Empty file"
+			ecode = [ERR_FILE_EOF, err_str]
+			break
+	if ecode[0] != OK: #error out early
+		call_deferred("_finish_load")
+		return ecode
 	var nframes = line.to_int()
 	_total_frames = nframes
 	for frame in range(nframes):
 #		print("Frame ", frame, "/", nframes)
 		var fish_array = []
 		var food_array = []
-		if f.eof_reached():
-			# show error message here
-			var err_str = "Only able read in " + str(frame) + " of " + str(nframes) + " frames."
-			return [ERR_FILE_EOF, err_str]
 		# get the number of fish for the current frame
-#		var num_fish = f.get_line().to_int()
 		line = f.get_line().strip_edges()
 		while line.length() == 0 or line[0] == '#':
 			line = f.get_line().strip_edges()
+			if f.eof_reached():
+				var err_str = "Only able read in " + str(frame) + " of " + str(nframes) + " frames."
+				ecode = [ERR_FILE_EOF, err_str]
+				break
 		var num_fish = line.to_int()
-		if f.eof_reached():
-			# show error message here
-			var err_str = "No more fish after specifying " + str(num_fish) + " for frame " + str(frame)
-			return [ERR_FILE_EOF, err_str]
 		for i in range(num_fish):
-#			var fish_string = f.get_line()
 			line = f.get_line().strip_edges()
 			while line.length() == 0 or line[0] == '#':
 				line = f.get_line().strip_edges()
+				if f.eof_reached():
+					var err_str = "Only able to read in " + str(i) + " of " + str(num_fish) + " fish for frame " + str(frame) + "."
+					ecode = [ERR_FILE_EOF, err_str]
+					break
 			var fish_string = line
-			if f.eof_reached():
-				# show error message here
-				var err_str = "Only able read in " + str(i) + " of " + str(num_fish) + " fish for frame " + str(frame) + "."
-				ecode = [ERR_FILE_EOF, err_str]
-				break
 			# Tried using regex to test for correctness as well, but was too complicated to be able 
 			# to match all forms of decimal numbers and exponentials
-			var fish_str = fish_string.replace("[", " ")
-			fish_str = fish_str.replace("]", " ")
-			fish_str = fish_str.replace(",", " ")
-			var fish_arr = fish_str.split_floats(" ", false)
-			# Do the error checking here, should be 6 floats
-			if fish_arr.size() != 6:
+			# Originally just replaced all the brackets and commas with spaces and used split_floats(" ", false)
+			#	however, would like to not replace all instances to preserve extra output for user extensions
+			# to this affect, get substrings of the position and velocity and parse only those
+			var vec_start = fish_string.find("[") + 1
+			var vec_end = fish_string.find("]") - vec_start
+			var fish_pos_str = fish_string.substr(vec_start, vec_end)
+			vec_start = fish_string.find("[", vec_start+1) + 1
+			var end_pos = fish_string.find("]", vec_start)
+			vec_end = end_pos - vec_start
+			var fish_vel_str = fish_string.substr(vec_start, vec_end)
+			# To get the rest of the string if you're extending it, do var str = fish_string.substr(end_pos+1)
+			#print("Fish Pos: ", fish_pos_str)
+			#print("Fish Vel: ", fish_vel_str)
+			#if end_pos+1 < fish_string.length():
+				#print("Fish Remain: ", fish_string.substr(end_pos+1))
+			fish_pos_str = fish_pos_str.replace(",", " ")
+			fish_vel_str = fish_vel_str.replace(",", " ")
+			var fish_pos_arr = fish_pos_str.split_floats(" ", false)
+			var fish_vel_arr = fish_vel_str.split_floats(" ", false)
+			# Do the error checking here, should be 6 floats total (3 pos and 3 vel)
+			if fish_pos_arr.size() != 3 or fish_vel_arr.size() != 3:
 				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
 				ecode = [ERR_INVALID_DATA, err_str]
 				break
 			var new_fish = Fish.new()
-			new_fish.position = Vector3(fish_arr[0], fish_arr[1], fish_arr[2])
-			new_fish.velocity = Vector3(fish_arr[3], fish_arr[4], fish_arr[5])
+			new_fish.position = Vector3(fish_pos_arr[0], fish_pos_arr[1], fish_pos_arr[2])
+			new_fish.velocity = Vector3(fish_vel_arr[0], fish_vel_arr[1], fish_vel_arr[2])
 			fish_array.push_back(new_fish)
 		if ecode[0] != OK:
 			break
-#		var num_food = f.get_line().to_int()
 		line = f.get_line().strip_edges()
 		while line.length() == 0 or line[0] == '#':
 			line = f.get_line().strip_edges()
+			print(str(f.eof_reached()), ": ", line)
+			if f.eof_reached():
+				var err_str = "File ends before reading number of food for frame " + str(frame) + "."
+				ecode = [ERR_FILE_EOF, err_str]
+				break
 		var num_food = line.to_int()
 		for i in range(num_food):
-#			var food_string = f.get_line()
 			line = f.get_line().strip_edges()
 			while line.length() == 0 or line[0] == '#':
 				line = f.get_line().strip_edges()
+				if f.eof_reached():
+					var err_str = "Only able to read in " + str(i) + " of " + str(num_food) + " food for frame " + str(frame) + "."
+					ecode = [ERR_FILE_EOF, err_str]
+					break
 			var food_string = line
-			if f.eof_reached():
-				# show error message here
-				var err_str = "Only able read in " + str(i) + " of " + str(num_food) + " food for frame " + str(frame) + "."
-				ecode = [ERR_FILE_EOF, err_str]
-				break
-			var food_str = food_string.replace("[", " ")
-			food_str = food_str.replace("]", " ")
-			food_str = food_str.replace(",", " ")
-			var food_arr = food_str.split_floats(" ", false)
+			# Do the same thing for the food vector as the position
+			var vec_start = food_string.find("[") + 1
+			var end_pos = food_string.find("]")
+			var vec_end = end_pos - vec_start - 1
+			var food_pos_str = food_string.substr(vec_start, vec_end)
+			# Similarly, get the remaining output with var str = food_string.substr(end_pos+1)
+			#if end_pos+1 < food_string.length():
+				#print("Food Remain: ", food_string.substr(end_pos+1))
+			food_pos_str = food_pos_str.replace(",", " ")
+			var food_arr = food_pos_str.split_floats(" ", false)
 			if food_arr.size() != 3:
 				var err_str = "Invalid input: Food " + str(i) + " in frame " + str(frame) + ": " + food_string
 				ecode = [ERR_INVALID_DATA, err_str]

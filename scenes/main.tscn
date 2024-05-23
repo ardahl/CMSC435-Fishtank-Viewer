@@ -1,9 +1,10 @@
-[gd_scene load_steps=16 format=3 uid="uid://b247mw8rkipt7"]
+[gd_scene load_steps=19 format=3 uid="uid://b247mw8rkipt7"]
 
 [ext_resource type="Script" path="res://scripts/fishtank.gd" id="1_ogwe8"]
 [ext_resource type="PackedScene" uid="uid://csxo846kvd2n1" path="res://scenes/fish.tscn" id="2_h57mf"]
 [ext_resource type="PackedScene" uid="uid://c4ev7hfnf378r" path="res://scenes/food.tscn" id="3_asu47"]
 [ext_resource type="Texture2D" uid="uid://cwqtf4miuexdf" path="res://textures/pausebutton.png" id="4_8nmy4"]
+[ext_resource type="Script" path="res://scripts/camera.gd" id="4_xrsip"]
 [ext_resource type="Texture2D" uid="uid://dsmmq4yixuvvp" path="res://textures/playbutton.png" id="5_dn68d"]
 [ext_resource type="Texture2D" uid="uid://cyv4cb2kjbog0" path="res://textures/first.png" id="6_j54lq"]
 [ext_resource type="Texture2D" uid="uid://c7ewrs6825glw" path="res://textures/stepbackwards.png" id="7_m5pwy"]
@@ -36,6 +37,14 @@ height = 1.0
 radius = 0.01
 height = 0.02
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7lwy5"]
+transparency = 1
+albedo_color = Color(0.435294, 0.270588, 0.513726, 0.658824)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_3yp3g"]
+material = SubResource("StandardMaterial3D_7lwy5")
+size = Vector2(1, 0.5)
+
 [node name="Main" type="Node3D"]
 
 [node name="Tank" type="MeshInstance3D" parent="."]
@@ -43,11 +52,17 @@ mesh = SubResource("BoxMesh_2ww4b")
 script = ExtResource("1_ogwe8")
 fish = ExtResource("2_h57mf")
 food = ExtResource("3_asu47")
+oob_color = Color(1, 0, 0, 1)
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="CameraBase" type="Node3D" parent="." node_paths=PackedStringArray("camera")]
+script = ExtResource("4_xrsip")
+camera = NodePath("Camera3D")
+
+[node name="Camera3D" type="Camera3D" parent="CameraBase"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0.89)
+current = true
 fov = 60.0
-near = 0.75
+near = 0.25
 far = 2.5
 
 [node name="UserInterface" type="Control" parent="."]
@@ -126,7 +141,7 @@ size_flags_vertical = 8
 
 [node name="ErrorDialog" type="AcceptDialog" parent="UserInterface"]
 title = "Error"
-initial_position = 1
+initial_position = 2
 dialog_text = "Error Text"
 
 [node name="Timeline" type="Panel" parent="UserInterface"]
@@ -260,18 +275,31 @@ text = "10.0 Sec
 layout_mode = 2
 text = "   "
 
-[node name="SettingsButton" type="MenuButton" parent="UserInterface" node_paths=PackedStringArray("fishtank", "fps_box")]
+[node name="SettingsButton" type="MenuButton" parent="UserInterface" node_paths=PackedStringArray("fishtank", "fps_box", "tank_walls", "camera")]
 layout_mode = 0
 offset_right = 57.0
 offset_bottom = 23.0
 action_mode = 1
 text = "Settings"
-item_count = 1
+item_count = 4
 popup/item_0/text = "FPS"
 popup/item_0/id = 0
+popup/item_1/text = "Color Out-Of-Bounds Fish"
+popup/item_1/checkable = 1
+popup/item_1/id = 1
+popup/item_2/text = "Tank Walls"
+popup/item_2/checkable = 1
+popup/item_2/checked = true
+popup/item_2/id = 2
+popup/item_3/text = "Lock Camera"
+popup/item_3/checkable = 1
+popup/item_3/checked = true
+popup/item_3/id = 3
 script = ExtResource("10_b8n2h")
 fishtank = NodePath("../../Tank")
 fps_box = NodePath("../FpsBox")
+tank_walls = NodePath("../../FishtankMesh/TankWalls")
+camera = NodePath("../../CameraBase")
 
 [node name="FpsBox" type="ConfirmationDialog" parent="UserInterface"]
 title = "Enter FPS Value"
@@ -288,11 +316,27 @@ value = 1.0
 rounded = true
 custom_arrow_step = 1.0
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="Lights" type="Node3D" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Lights"]
 transform = Transform3D(1, 0, 0, 0, 0.125524, 0.992091, 0, -0.992091, 0.125524, 0, 3.10271, 0)
 
-[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="Lights"]
 transform = Transform3D(1, 0, 0, 0, 0.915361, -0.402635, 0, 0.402635, 0.915361, 0, -1.51525, 3.56361)
+
+[node name="DirectionalLight3D3" type="DirectionalLight3D" parent="Lights"]
+transform = Transform3D(0.0904066, -0.649151, 0.755268, 0, -0.758373, -0.65182, 0.995905, 0.0589289, -0.068562, 0, -2.8811, 0.12641)
+
+[node name="DirectionalLight3D4" type="DirectionalLight3D" parent="Lights"]
+transform = Transform3D(0.721729, -0.135763, -0.678731, -0.669349, 0.112854, -0.734327, 0.176292, 0.984293, -0.00942325, 0.37821, -2.35438, 0.80737)
+
+[node name="DirectionalLight3D5" type="DirectionalLight3D" parent="Lights"]
+transform = Transform3D(1, 0, 0, 0, -0.968488, 0.249062, 0, -0.249062, -0.968488, 0, 3.49217, -3.07817)
+
+[node name="OmniLight3D" type="OmniLight3D" parent="Lights"]
+light_energy = 0.1
+omni_range = 1.0
+omni_attenuation = 0.307786
 
 [node name="FishtankMesh" type="Node3D" parent="."]
 
@@ -377,6 +421,38 @@ mesh = SubResource("SphereMesh_0fwdd")
 [node name="Corner8" type="MeshInstance3D" parent="FishtankMesh"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, -0.25, -0.125)
 mesh = SubResource("SphereMesh_0fwdd")
+
+[node name="TankWalls" type="Node3D" parent="FishtankMesh"]
+
+[node name="TankWall1" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, -0.125)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../..")
+
+[node name="TankWall2" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0, 0.125)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../TankWall1")
+
+[node name="TankWall3" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(-1.09278e-08, 1, -4.37114e-08, 0, -4.37114e-08, -1, -0.25, -4.37114e-08, 1.91069e-15, -0.5, 0, 0)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../..")
+
+[node name="TankWall4" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(-1.09278e-08, -1, 4.37114e-08, 0, -4.37114e-08, -1, 0.25, -4.37114e-08, 1.91069e-15, 0.5, 0, 0)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../..")
+
+[node name="TankWall5" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(1, 0, 0, 0, -1, 4.37114e-08, 0, -8.74228e-08, -0.5, 0, 0.25, 0)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../..")
+
+[node name="TankWall6" type="MeshInstance3D" parent="FishtankMesh/TankWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, -0.25, 0)
+mesh = SubResource("PlaneMesh_3yp3g")
+skeleton = NodePath("../..")
 
 [connection signal="ready" from="Tank" to="UserInterface/SettingsButton" method="_on_tank_ready"]
 [connection signal="pressed" from="UserInterface/FileInput/OpenFile" to="Tank" method="_on_open_file_pressed"]

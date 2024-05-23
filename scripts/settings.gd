@@ -2,6 +2,8 @@ extends MenuButton
 
 @export var fishtank: MeshInstance3D
 @export var fps_box: ConfirmationDialog
+@export var tank_walls: Node
+@export var camera: Node
 
 var _fps_input
 var _refresh_rate
@@ -17,13 +19,33 @@ func _process(_delta):
 
 
 func _on_id_pressed(id: int):
-	var option_str = get_popup().get_item_text(get_popup().get_item_index(id))
+	var popup = get_popup()
+	var ind = popup.get_item_index(id)
+	var option_str = popup.get_item_text(ind)
 	print("Menu Pressed: ", option_str)
 	if option_str == "FPS":
 		print("Max fps: ", Engine.get_max_fps())
 #		_fps_input.get_line_edit().set_text(str(Engine.get_max_fps()))
 		_fps_input.set_value(Engine.get_max_fps())
 		fps_box.popup()
+	if option_str == "Color Out-Of-Bounds Fish":
+		print("Toggling coloring out of bounds fish")
+		var oob_bool = fishtank.toggle_oob_coloring()
+		popup.set_item_checked(ind, oob_bool)
+	if option_str == "Tank Walls":
+		if popup.is_item_checked(ind): #is currently checked so uncheck
+			tank_walls.hide()
+			popup.set_item_checked(ind, false)
+		else: #otherwise currenly unchecked so make checked
+			tank_walls.show()
+			popup.set_item_checked(ind, true)
+	if option_str == "Lock Camera":
+		if popup.is_item_checked(ind):
+			camera.camera_locked = false
+			popup.set_item_checked(ind, false)
+		else:
+			camera.camera_locked = true
+			popup.set_item_checked(ind, true)
 
 
 func _on_fps_input_text_submitted(new_text):

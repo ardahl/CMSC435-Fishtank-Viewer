@@ -1,14 +1,20 @@
-[gd_scene load_steps=3 format=3 uid="uid://c4ev7hfnf378r"]
+[gd_scene load_steps=4 format=3 uid="uid://c4ev7hfnf378r"]
+
+[ext_resource type="Script" path="res://scripts/food_properties.gd" id="1_usgwj"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7dexn"]
+resource_local_to_scene = true
 albedo_color = Color(0, 0, 1, 1)
 
 [sub_resource type="BoxMesh" id="BoxMesh_jipld"]
 material = SubResource("StandardMaterial3D_7dexn")
 size = Vector3(0.75, 0.75, 0.75)
 
-[node name="Food" type="Node3D"]
+[node name="Food" type="Node3D" node_paths=PackedStringArray("meshes")]
+script = ExtResource("1_usgwj")
+meshes = [NodePath("FoodMesh")]
 
 [node name="FoodMesh" type="MeshInstance3D" parent="."]
 transform = Transform3D(0.01, 0, 0, 0, 0.01, 0, 0, 0, 0.01, 0, 0, 0)
 mesh = SubResource("BoxMesh_jipld")
+surface_material_override/0 = SubResource("StandardMaterial3D_7dexn")
