@@ -32,7 +32,7 @@ var _total_frames: int = 0
 var _load_mutex = Mutex.new()
 var _thread = Thread.new()
 var _tank_bounds = Vector3(0.5, 0.25, 0.125)
-var _color_oob_fish = false
+var _color_oob_fish = true
 
 
 # Called when the node enters the scene tree for the first time.
