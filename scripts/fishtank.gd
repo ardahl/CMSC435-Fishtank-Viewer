@@ -142,6 +142,7 @@ func _show_fish(frame):
 			dir = f.position - axis
 		# Move to position
 		fish_inst.look_at_from_position(f.position, dir)
+		fish_inst.color = f.color
 		# If OOB coloring is on, check if out of bounds
 		if _color_oob_fish:
 			var pos_diff = f.position.abs() - _tank_bounds
@@ -162,6 +163,7 @@ func _show_food(frame):
 		# Move to position
 #		print("Pos: ", f.position.x, ",", f.position.y, ",", f.position.z)
 		food_inst.set_position(f.position)
+		food_inst.color = f.color
 		add_child(food_inst)
 
 
@@ -247,11 +249,30 @@ func _load_file_threadwork(file) -> Array:
 			# Originally just replaced all the brackets and commas with spaces and used split_floats(" ", false)
 			#	however, would like to not replace all instances to preserve extra output for user extensions
 			# to this affect, get substrings of the position and velocity and parse only those
-			var vec_start = fish_string.find("[") + 1
-			var vec_end = fish_string.find("]") - vec_start
+			var vec_start = fish_string.find("[")
+			if vec_start == -1:
+				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
+			vec_start += 1
+			var vec_end = fish_string.find("]") 
+			if vec_end == -1:
+				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
+			vec_end -= vec_start
 			var fish_pos_str = fish_string.substr(vec_start, vec_end)
-			vec_start = fish_string.find("[", vec_start+1) + 1
+			vec_start = fish_string.find("[", vec_start+1) 
+			if vec_start == -1:
+				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
+			vec_start += 1
 			var end_pos = fish_string.find("]", vec_start)
+			if end_pos == -1:
+				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
 			vec_end = end_pos - vec_start
 			var fish_vel_str = fish_string.substr(vec_start, vec_end)
 			# To get the rest of the string if you're extending it, do var str = fish_string.substr(end_pos+1)
@@ -268,9 +289,27 @@ func _load_file_threadwork(file) -> Array:
 				var err_str = "Invalid input: Fish " + str(i) + " in frame " + str(frame) + ": " + fish_string
 				ecode = [ERR_INVALID_DATA, err_str]
 				break
+			# If there is still content after pos and vel, attempt to parse as a color
+			var fish_color = Color.GREEN
+			if end_pos+1 < fish_string.length(): # if there is remaining text in the line
+				var remain_str = fish_string.substr(end_pos+1).strip_edges() # get the rest of the line and strip whitespace off ends
+				if remain_str.length() > 0:
+					#check for [ and ]
+					vec_start = remain_str.find("[")
+					if vec_start != -1:
+						vec_start += 1
+						end_pos = remain_str.find("]", vec_start)
+						if end_pos != -1:
+							vec_end = end_pos - vec_start
+							var fish_color_str = remain_str.substr(vec_start, vec_end)
+							fish_color_str = fish_color_str.replace(",", " ")
+							var fish_color_arr = fish_color_str.split_floats(" ", false)
+							if fish_color_arr.size() == 3 and fish_color_arr[0] >= 0.0 and fish_color_arr[0] <= 1.0 and fish_color_arr[1] >= 0.0 and fish_color_arr[1] <= 1.0 and fish_color_arr[2] >= 0.0 and fish_color_arr[2] <= 1.0:
+								fish_color = Color(fish_color_arr[0], fish_color_arr[1], fish_color_arr[2])
 			var new_fish = Fish.new()
 			new_fish.position = Vector3(fish_pos_arr[0], fish_pos_arr[1], fish_pos_arr[2])
 			new_fish.velocity = Vector3(fish_vel_arr[0], fish_vel_arr[1], fish_vel_arr[2])
+			new_fish.color = fish_color
 			fish_array.push_back(new_fish)
 		if ecode[0] != OK:
 			break
@@ -293,9 +332,18 @@ func _load_file_threadwork(file) -> Array:
 					break
 			var food_string = line
 			# Do the same thing for the food vector as the position
-			var vec_start = food_string.find("[") + 1
+			var vec_start = food_string.find("[")
+			if vec_start == -1:
+				var err_str = "Invalid input: Food " + str(i) + " in frame " + str(frame) + ": " + food_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
+			vec_start += 1
 			var end_pos = food_string.find("]")
-			var vec_end = end_pos - vec_start - 1
+			if end_pos == -1:
+				var err_str = "Invalid input: Food " + str(i) + " in frame " + str(frame) + ": " + food_string
+				ecode = [ERR_INVALID_DATA, err_str]
+				break
+			var vec_end = end_pos - vec_start
 			var food_pos_str = food_string.substr(vec_start, vec_end)
 			# Similarly, get the remaining output with var str = food_string.substr(end_pos+1)
 			#if end_pos+1 < food_string.length():
@@ -306,8 +354,25 @@ func _load_file_threadwork(file) -> Array:
 				var err_str = "Invalid input: Food " + str(i) + " in frame " + str(frame) + ": " + food_string
 				ecode = [ERR_INVALID_DATA, err_str]
 				break
+			var food_color = Color.BLUE
+			if end_pos+1 < food_string.length(): # if there is remaining text in the line
+				var remain_str = food_string.substr(end_pos+1).strip_edges() # get the rest of the line and strip whitespace off ends
+				if remain_str.length() > 0:
+					#check for [ and ]
+					vec_start = remain_str.find("[")
+					if vec_start != -1:
+						vec_start += 1
+						end_pos = remain_str.find("]", vec_start)
+						if end_pos != -1:
+							vec_end = end_pos - vec_start
+							var food_color_str = remain_str.substr(vec_start, vec_end)
+							food_color_str = food_color_str.replace(",", " ")
+							var food_color_arr = food_color_str.split_floats(" ", false)
+							if food_color_arr.size() == 3 and food_color_arr[0] >= 0.0 and food_color_arr[0] <= 1.0 and food_color_arr[1] >= 0.0 and food_color_arr[1] <= 1.0 and food_color_arr[2] >= 0.0 and food_color_arr[2] <= 1.0:
+								food_color = Color(food_color_arr[0], food_color_arr[1], food_color_arr[2])
 			var new_food = Food.new()
 			new_food.position = Vector3(food_arr[0], food_arr[1], food_arr[2])
+			new_food.color = food_color
 			food_array.push_back(new_food)
 		if ecode[0] != OK:
 			break
@@ -405,6 +470,11 @@ class Fish:
 			velocity = new_velocity
 		get:
 			return velocity
+	var color: Color = Color.GREEN:
+		set(new_color):
+			color = new_color
+		get:
+			return color
 	
 	func _to_string():
 		return "Position: " + str(position) + ", Velocity: " + str(velocity)
@@ -416,3 +486,11 @@ class Food:
 			position = new_position
 		get:
 			return position
+	var color: Color = Color.BLUE:
+		set(new_color):
+			color = new_color
+		get:
+			return color
+	
+	func _to_string():
+		return "Position: " + str(position)
