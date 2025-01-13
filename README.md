@@ -44,6 +44,6 @@ replacing 'Fishtank' with whatever the name of the executable is.
 
 ### macOS
 
-Applications are packaged differently on mac into a folder, not a file, and so the command is a bit different. There are details in the Note section at the top of [this page](https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html), but the gist is that from the Applications folder the command becomes the following:
+Applications are packaged differently on mac into a folder, not a file, and so the command is a bit different. There are details in the Note section at the top of [this page](https://docs.godotengine.org/en/stable/tutorials/editor/command_line_tutorial.html), but the gist is that from where the app is located the command becomes the following:
 
 `./Fishtank.app/Contents/MacOS/Fishtank --rendering-driver opengl3`
