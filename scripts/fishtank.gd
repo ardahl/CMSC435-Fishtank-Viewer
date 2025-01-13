@@ -1,8 +1,8 @@
 extends MeshInstance3D
 
-#TODO: fix fish velocity parsing errors
+#TODO: see if anything can be done to fix the issues when changing fps in opengl compatability mode
 
-@export var fps: int = 60
+@export var fps: int = 30
 @export var fish: PackedScene
 @export var food: PackedScene
 @export var oob_color: Color
