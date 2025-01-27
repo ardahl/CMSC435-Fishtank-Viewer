@@ -220,7 +220,13 @@ func _load_file_threadwork(file) -> Array:
 	if ecode[0] != OK: #error out early
 		call_deferred("_finish_load")
 		return ecode
-	var nframes = line.to_int()
+	var setup = line.split(" ", false)
+	if setup.size() > 1:
+		print("Input file fps: ", setup[1].to_int())
+		fps = setup[1].to_int()
+	else:
+		print("No framerate in file, leaving at ", fps)
+	var nframes = setup[0].to_int()
 	_total_frames = nframes
 	for frame in range(nframes):
 #		print("Frame ", frame, "/", nframes)
@@ -396,6 +402,7 @@ func _finish_load():
 		_reset_tank()
 		pass
 	else:
+		Engine.set_max_fps(fps)
 		_setup_timeline()
 		_current_frame = 1
 		_current_time = 0
